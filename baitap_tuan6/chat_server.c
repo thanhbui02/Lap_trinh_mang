@@ -74,7 +74,8 @@ int main()
             char buff[50];
             char id[20];
             char name[20];
-            char *result;
+            int count=0;
+            char space=' ';
             memset(buff, 0, sizeof(buff));
             memset(id, 0, sizeof(id));
             memset(name, 0, sizeof(name));
@@ -82,7 +83,10 @@ int main()
             printf("Có kết nối mới: %d\n", client);
             do
             {
-                int s = send(client, "Vui lòng nhập tên của bạn (đúng định dạng client_id:name):", strlen("Vui lòng nhập tên của bạn (đúng định dạng client_id:name):"), 0);
+                count=0;
+                memset(name,'\0',sizeof(name));
+                memset(buff,'\0',sizeof(buff));
+                int s = send(client, "Vui lòng nhập tên của bạn (đúng định dạng client_id: name):", strlen("Vui lòng nhập tên của bạn (đúng định dạng client_id:name):"), 0);
                 if (s <= 0)
                 {
                     break;
@@ -101,9 +105,14 @@ int main()
                 token = strtok(NULL, ":");
                 token[strlen(token) - 1] = 0;
                 strcpy(name, token);
-                result = strchr(name, ' ');
-            } while (strcmp(id, "client_id") != 0 || strlen(name) < 3||result!=NULL);
-
+                for (int i = 1; i < strlen(name); i++)
+                {
+                    if (name[i] ==space)
+                    {
+                        count++;
+                    }
+                }
+            } while (strcmp(id, "client_id") != 0 || strlen(name) < 3 || count >=1);
             clients[num_clients] = client;
             strcpy(nameClients[num_clients++], name);
             printf("%s đã kết nối tới Server chat.\n", nameClients[num_clients - 1]);
@@ -123,7 +132,7 @@ int main()
                 // printf(" %s : %s\n", nameClients[i], buf);
                 char full_msg[500];
                 int msg_len = snprintf(full_msg, sizeof(full_msg), "%s:%s", nameClients[i], buf);
-                full_msg[strlen(full_msg)-1] = 0;
+                full_msg[strlen(full_msg) - 1] = 0;
                 for (int j = 0; j < num_clients; j++)
                 {
                     if (j != i)
