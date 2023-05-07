@@ -76,9 +76,6 @@ int main()
             char name[20];
             int count=0;
             char space=' ';
-            memset(buff, 0, sizeof(buff));
-            memset(id, 0, sizeof(id));
-            memset(name, 0, sizeof(name));
             int client = accept(listener, NULL, NULL);
             printf("Có kết nối mới: %d\n", client);
             do
@@ -86,6 +83,7 @@ int main()
                 count=0;
                 memset(name,'\0',sizeof(name));
                 memset(buff,'\0',sizeof(buff));
+                memset(id, '\0', sizeof(id));
                 int s = send(client, "Vui lòng nhập tên của bạn (đúng định dạng client_id: name):", strlen("Vui lòng nhập tên của bạn (đúng định dạng client_id:name):"), 0);
                 if (s <= 0)
                 {
