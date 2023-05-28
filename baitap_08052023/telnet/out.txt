@@ -1,2 +1,2 @@
-credentials.txt  telnet_client	  telnet_server
-out.txt		 telnet_client.c  telnet_server.c
+credentials.txt  telnet_client	  telnet_output.png  telnet_server.c
+out.txt		 telnet_client.c  telnet_server
