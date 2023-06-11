@@ -16,26 +16,25 @@ int clients[MAX_CLIENTS];
 char nameClients[MAX_CLIENTS][50];
 int num_clients = 0;
 
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
 void *handle_client(void *arg)
 {
     int client = *(int *)arg;
     char buf[BUFFER_SIZE];
-
-    char request[] = "Vui lòng nhập tên của bạn (đúng định dạng client_id: name):";
-    int s = send(client, request, strlen(request), 0);
-    if (s <= 0)
-    {
-        close(client);
-        pthread_exit(NULL);
-    }
 
     char id[20];
     char name[20];
     int count = 0;
     char space = ' ';
 
-    while (1)
+    do
     {
+        char request[] = "Vui lòng nhập tên của bạn (đúng định dạng client_id: name):";
+        pthread_mutex_lock(&mutex); // Khóa mutex trước khi gửi yêu cầu đăng nhập
+        int s = send(client, request, strlen(request), 0);
+        pthread_mutex_unlock(&mutex); // Mở khóa mutex sau khi gửi yêu cầu đăng nhập
+
         memset(buf, 0, sizeof(buf));
         memset(id, 0, sizeof(id));
         memset(name, 0, sizeof(name));
@@ -61,14 +60,14 @@ void *handle_client(void *arg)
             }
         }
 
-        if (strcmp(id, "client_id") == 0 && strlen(name) >= 3 && count < 1)
-        {
-            break;
-        }
-    }
+    } while (strcmp(id, "client_id") != 0 || strlen(name) < 3 || count >= 1);
 
-    strcpy(nameClients[num_clients++], name);
-    printf("%s đã kết nối tới Server chat.\n", nameClients[num_clients - 1]);
+    pthread_mutex_lock(&mutex); // Khóa mutex trước khi thêm client mới
+    clients[num_clients] = client;
+    strcpy(nameClients[num_clients], name);
+    printf("%s đã kết nối tới Server chat.\n", nameClients[num_clients]);
+    num_clients++;
+    pthread_mutex_unlock(&mutex); // Mở khóa mutex sau khi thêm client mới
 
     while (1)
     {
@@ -82,9 +81,10 @@ void *handle_client(void *arg)
         buf[ret] = 0;
 
         char full_msg[500];
-        int msg_len = snprintf(full_msg, sizeof(full_msg), "%s:%s", name, buf);
-        full_msg[strlen(full_msg) - 1] = 0;
+        int msg_len = snprintf(full_msg, sizeof(full_msg), "%s: %s", name, buf);
+        full_msg[msg_len] = 0;
 
+        pthread_mutex_lock(&mutex); // Khóa mutex trước khi gửi tin nhắn cho các client khác
         for (int i = 0; i < num_clients; i++)
         {
             if (clients[i] != client)
@@ -92,9 +92,28 @@ void *handle_client(void *arg)
                 send(clients[i], full_msg, strlen(full_msg), 0);
             }
         }
+        pthread_mutex_unlock(&mutex); // Mở khóa mutex sau khi gửi tin nhắn cho các client khác
     }
 
+    pthread_mutex_lock(&mutex); // Khóa mutex trước khi loại bỏ client đã ngắt khỏi danh sách
+    for (int i = 0; i < num_clients; i++)
+    {
+        if (clients[i] == client)
+        {
+            // Dịch chuyển các phần tử trong mảng để loại bỏ client
+            for (int j = i; j < num_clients - 1; j++)
+            {
+                clients[j] = clients[j + 1];
+                strcpy(nameClients[j], nameClients[j + 1]);
+            }
+            break;
+        }
+    }
+    num_clients--;
+    pthread_mutex_unlock(&mutex); // Mở khóa mutex sau khi loại bỏ client đã ngắt khỏi danh sách
+
     close(client);
+
     pthread_exit(NULL);
 }
 
@@ -126,31 +145,54 @@ int main()
 
     while (1)
     {
-        int client = accept(listener, NULL, NULL);
-        if (client == -1)
+        fd_set readfds;
+        FD_ZERO(&readfds);
+        FD_SET(listener, &readfds);
+        int max_fd = listener;
+
+        pthread_mutex_lock(&mutex); // Khóa mutex trước khi thao tác trên danh sách client
+        for (int i = 0; i < num_clients; i++)
         {
-            perror("accept() failed");
+            int client_fd = clients[i];
+            FD_SET(client_fd, &readfds);
+            if (client_fd > max_fd)
+                max_fd = client_fd;
+        }
+        pthread_mutex_unlock(&mutex); // Mở khóa mutex sau khi thao tác trên danh sách client
+
+        int activity = select(max_fd + 1, &readfds, NULL, NULL, NULL);
+        if (activity < 0)
+        {
+            perror("select() failed");
             continue;
         }
 
-        if (num_clients >= MAX_CLIENTS)
+        if (FD_ISSET(listener, &readfds))
         {
-            printf("Số lượng kết nối đã đạt tối đa. Từ chối kết nối mới.\n");
-            close(client);
-            continue;
+            int client = accept(listener, NULL, NULL);
+            if (client == -1)
+            {
+                perror("accept() failed");
+                continue;
+            }
+
+            if (num_clients >= MAX_CLIENTS)
+            {
+                printf("Số lượng kết nối đã đạt tối đa. Từ chối kết nối mới.\n");
+                close(client);
+                continue;
+            }
+
+            pthread_t thread;
+            if (pthread_create(&thread, NULL, handle_client, &client) != 0)
+            {
+                perror("pthread_create() failed");
+                close(client);
+                continue;
+            }
+
+            pthread_detach(thread);
         }
-
-        clients[num_clients] = client;
-
-        pthread_t thread;
-        if (pthread_create(&thread, NULL, handle_client, &client) != 0)
-        {
-            perror("pthread_create() failed");
-            close(client);
-            continue;
-        }
-
-        pthread_detach(thread);
     }
 
     close(listener);
