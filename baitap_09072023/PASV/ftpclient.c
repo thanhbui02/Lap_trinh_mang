@@ -13,7 +13,7 @@ int main()
 
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr(" 192.168.56.1");
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     addr.sin_port = htons(21);
 
     if (connect(client, (struct sockaddr *)&addr, sizeof(addr)))
@@ -68,31 +68,33 @@ int main()
 
     // Lay noi dung cua thu muc truoc khi upload
     {
-        // Gui lenh EPSV
-        send(client, "EPSV\r\n", 6, 0);
+        // Gui lenh PASV
+        send(client, "PASV\r\n", 6, 0);
 
         len = recv(client, buf, sizeof(buf), 0);
         buf[len] = 0;
         puts(buf);
 
-        // Xac dinh gia tri cong cua kenh du lieu
-        char *pos1 = strstr(buf, "|||") + 3;
-        char *pos2 = strchr(pos1, '|');
+        // Xac dinh dia chi IP va cong cua kenh du lieu
+        char *pos1 = strchr(buf, '(') + 1;
+        char *pos2 = strchr(pos1, ')');
+        *pos2 = 0;
 
-        int value_length = pos2 - pos1;
-        char value[16];
-        memcpy(value, pos1, value_length);
-        value[value_length] = 0;
+        unsigned int ip[4], port[2];
+        sscanf(pos1, "%u,%u,%u,%u,%u,%u", &ip[0], &ip[1], &ip[2], &ip[3], &port[0], &port[1]);
 
-        int port = atoi(value);
+        char data_ip[16];
+        sprintf(data_ip, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+
+        int data_port = port[0] * 256 + port[1];
 
         // Mo ket noi moi den kenh du lieu
         int data_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
         struct sockaddr_in data_addr;
         data_addr.sin_family = AF_INET;
-        data_addr.sin_addr.s_addr = inet_addr("192.168.5.54");
-        data_addr.sin_port = htons(port);
+        data_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+        data_addr.sin_port = htons(data_port);
 
         if (connect(data_socket, (struct sockaddr *)&data_addr, sizeof(data_addr)))
         {
@@ -127,31 +129,33 @@ int main()
 
     // Upload file
     {
-        // Gui lenh EPSV
-        send(client, "EPSV\r\n", 6, 0);
+        // Gui lenh PASV
+        send(client, "PASV\r\n", 6, 0);
 
         len = recv(client, buf, sizeof(buf), 0);
         buf[len] = 0;
         puts(buf);
 
-        // Xac dinh gia tri cong cua kenh du lieu
-        char *pos1 = strstr(buf, "|||") + 3;
-        char *pos2 = strchr(pos1, '|');
+        // Xac dinh dia chi IP va cong cua kenh du lieu
+        char *pos1 = strchr(buf, '(') + 1;
+        char *pos2 = strchr(pos1, ')');
+        *pos2 = 0;
 
-        int value_length = pos2 - pos1;
-        char value[16];
-        memcpy(value, pos1, value_length);
-        value[value_length] = 0;
+        unsigned int ip[4], port[2];
+        sscanf(pos1, "%u,%u,%u,%u,%u,%u", &ip[0], &ip[1], &ip[2], &ip[3], &port[0], &port[1]);
 
-        int port = atoi(value);
+        char data_ip[16];
+        sprintf(data_ip, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+
+        int data_port = port[0] * 256 + port[1];
 
         // Mo ket noi moi den kenh du lieu
         int data_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
         struct sockaddr_in data_addr;
         data_addr.sin_family = AF_INET;
-        data_addr.sin_addr.s_addr = inet_addr("192.168.5.54");
-        data_addr.sin_port = htons(port);
+        data_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+        data_addr.sin_port = htons(data_port);
 
         if (connect(data_socket, (struct sockaddr *)&data_addr, sizeof(data_addr)))
         {
@@ -160,14 +164,14 @@ int main()
         }
 
         // Gui lenh STOR ten_file
-        FILE *f = fopen("fileUpload.txt", "rb");
+        FILE *f = fopen("fileupload.txt", "rb");
         if (!f)
         {
             perror("fopen() failed");
             return 1;
         }
 
-        sprintf(buf, "STOR fileUploadFromClient.txt\r\n");
+        sprintf(buf, "STOR fileupload.txt\r\n");
         send(client, buf, strlen(buf), 0);
 
         // Phan hoi so 1 cua lenh STOR
@@ -195,31 +199,33 @@ int main()
 
     // Lay noi dung cua thu muc sau khi upload
     {
-        // Gui lenh EPSV
-        send(client, "EPSV\r\n", 6, 0);
+        // Gui lenh PASV
+        send(client, "PASV\r\n", 6, 0);
 
         len = recv(client, buf, sizeof(buf), 0);
         buf[len] = 0;
         puts(buf);
 
-        // Xac dinh gia tri cong cua kenh du lieu
-        char *pos1 = strstr(buf, "|||") + 3;
-        char *pos2 = strchr(pos1, '|');
+        // Xac dinh dia chi IP va cong cua kenh du lieu
+        char *pos1 = strchr(buf, '(') + 1;
+        char *pos2 = strchr(pos1, ')');
+        *pos2 = 0;
 
-        int value_length = pos2 - pos1;
-        char value[16];
-        memcpy(value, pos1, value_length);
-        value[value_length] = 0;
+        unsigned int ip[4], port[2];
+        sscanf(pos1, "%u,%u,%u,%u,%u,%u", &ip[0], &ip[1], &ip[2], &ip[3], &port[0], &port[1]);
 
-        int port = atoi(value);
+        char data_ip[16];
+        sprintf(data_ip, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+
+        int data_port = port[0] * 256 + port[1];
 
         // Mo ket noi moi den kenh du lieu
         int data_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
         struct sockaddr_in data_addr;
         data_addr.sin_family = AF_INET;
-        data_addr.sin_addr.s_addr = inet_addr("192.168.5.54");
-        data_addr.sin_port = htons(port);
+        data_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+        data_addr.sin_port = htons(data_port);
 
         if (connect(data_socket, (struct sockaddr *)&data_addr, sizeof(data_addr)))
         {
