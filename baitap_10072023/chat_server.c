@@ -102,6 +102,7 @@ void processCommand(char* command, int clientSocket) {
     } else if (strcmp(token, "QUIT") == 0) {
         send(clientSocket, "100 OK\n", 7, 0);
         close(clientSocket);
+        
     }
 }
 
